@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset='UTF-8'>
+	<title>DVW monadology</title>
+	<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css' integrity='sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm' crossorigin='anonymous'>
+	<link href='https://fonts.googleapis.com/css?family=Lekton' rel='stylesheet'>
+	<link rel='stylesheet' type='text/css' href='{{url_for('static', filename='css/stylesheet.css')}}'>
+	<script type='text/javascript' src='{{url_for('static',filename='js/jquery.js')}}'></script>
+	<script type='text/javascript' src='{{url_for('static',filename='js/d3.v4.min.js')}}'></script>
+	<!-- load custom js in footer so jinja2 variables can load first -->
+
+</head>
+
+<body>
+
+<script type="text/javascript">
+	// Set the first results of the w2v model
+	var json_initial = JSON.parse('{{inputs | safe}}');
+</script>
+
+<div id='maindiv'>
+
+	<div id='pagetitle'><img src='{{url_for('static', filename='img/chanlogo.png')}}'><h1>Deep Vernacular Web monadology</h1>
+	</div>
+	<p>How can one explore a subculture without generalising the arcane particulars that embody the 'sub' in 'subculture'?</p>
+	<p>Following <a href='https://hal-sciencespo.archives-ouvertes.fr/file/index/docid/1053567/filename/bjos1428.pdf' target='_blank'>Latour et al (2012)</a>, one could do so by digitally navigating 'monads' in associative networks as a construction of a whole without leaving the particulars.</p>
+	<p>The network below is an attempt at offering such a network. It shows the ten nearest neigbours per word using word2vec models of all posts on /pol/ per month or transcripts of right-wing YouTube videos.</p>
+	<p>Click the words to expand the network, or use the input below to add new data. Hold ctrl and click to remove a node.</p>
+
+	<h4 id='time_model'></h4>
+
+	<!-- the network -->
+	<svg width='700' height='600'></svg>
+
+
+	<div id='controlpanel'>
+
+		<select id='modelselect'>
+			{% for model in models %}
+			<option> {{model}}</option>
+			{% endfor %}
+		</select>
+
+		<input type='text' name='querystring' id='querystring' placeholder='Type a word to append'>
+		<button id='btn-append'>Append</button>
+		<button id='btn-restart'>Restart</button>
+		<button id='btn-time-range'>Over time</button>
+		<div id='slider-container'>
+			<!-- dynamic slider for manipulating animated networks -->
+		</div>
+		<div id='alertbox'></div>
+		<p id='alerts'></p>
+	</div>
+
+	<p><strong>Data:</strong> <a href='https://archive.4plebs.org' target='_blank'>archive.4plebs.org</a></p>
+	<p><strong>Made by:</strong> <a href='http://salhagen.nl' target='_blank'>Sal Hagen</a></p>
+	<p><strong>More:</strong> <a href='https://oilab.eu' target='_blank'>OILab.eu</a></p>
+</div>
+
+</body>
+
+<script type='text/javascript' src='{{url_for('static',filename='js/script.js')}}'></script>
