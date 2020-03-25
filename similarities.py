@@ -2,52 +2,36 @@ import json
 import os
 from gensim.models import Word2Vec, KeyedVectors
 
-def loadModels(model):
-	"""
-	Loads the models in memory so read is quicker
+def train_w2v_model(input_tokens, model_name, min_word=200):
 
-	"""
-	print('Saving ' + model + ' as normed')
-	loaded_model = KeyedVectors.load('models/' + model)
-	print('Doing loaded_model.init_sims(replace=True)')
-	loaded_model.init_sims(replace=True)
-	print('Saving as normed')
-	loaded_model.save('models/' + model[:-6] + '-normed.bin')
-	print('Loading normed model')
-	normed_model = KeyedVectors.load('models/' + model[:-6] + '-normed.bin', mmap='r')
-	print('Doing normed_model.syn0norm = normed_model.syn0')
-	normed_model.wv.syn0norm = normed_model.wv.syn0		# prevent recalc of normed vectors
-	print('Most similar')
-	normed_model.wv.most_similar('4chan')				# any word will do: just to page all in
+	# Train a model
+	print('Training ' + model_name)
+	model = Word2Vec(train, min_count=min_word)
+	# pickle the entire model to disk, so we can load & resume training later
+	model.save(model_name + '.model')
+	#store the learned weights, in a format the original C tool understands
+	model.wv.save_word2vec_format(model_name + '.model.bin')
+	return model
+
+def load_w2v_model(input_model):
 	
+	# Load a new model
+	model = KeyedVectors.load(input_model, mmap='r')
+	model.wv.syn0norm = model.wv.syn0				# prevent recalc of normed vectors
+	#model = KeyedVectors.load_word2vec_format(load, binary=True)
+	return model
 
-def getWord2vecModel(train='', load='', modelname='', min_word=200):
-	if train != '':
-		print('Training ' + modelname)
-		# train model
-		# neighbourhood?
-		model = Word2Vec(train, min_count=min_word)
-		# pickle the entire model to disk, so we can load & resume training later
-		model.save(modelname + '.model')
-		#store the learned weights, in a format the original C tool understands
-		model.wv.save_word2vec_format(modelname + '.model.bin')
-		return model
-	elif load != '':
-		model = KeyedVectors.load(load, mmap='r')
-		model.wv.syn0norm = model.wv.syn0				# prevent recalc of normed vectors
-		#model = KeyedVectors.load_word2vec_format(load, binary=True)
-		return model
-
-def getW2vSims(inputmodel, querystring, longitudinal=False, nearest_neighbours=10):
+def get_w2v_sims(input_model, query_string, longitudinal=False, nearest_neighbours=10):
 	""" returns a json file of word2vec nearest neighbours """
-	model = getWord2vecModel(load=inputmodel)
+
+	model = load_w2v_model(input_model)
 
 	neigbours = []
-	if querystring not in list(model.wv.vocab):
+	if query_string not in list(model.wv.vocab):
 		return 'Word not in vocabulary'
 	else:
 		# Change this later with better models
-		similars = model.wv.most_similar(positive=[querystring], topn = 200)
+		similars = model.wv.most_similar(positive=[query_string], topn = 200)
 		total_words = 0
 		for words in similars:
 			if model.wv.vocab[words[0]].count >= 200:
@@ -64,7 +48,7 @@ def getW2vSims(inputmodel, querystring, longitudinal=False, nearest_neighbours=1
 	di_nn['links'] = []
 
 	di_nn['nodes'].append({'name': 'empty'})
-	di_nn['nodes'][0]['name'] = querystring
+	di_nn['nodes'][0]['name'] = query_string
 	di_nn['nodes'][0]['group'] = 1
 
 	for index, neigbour in enumerate(neigbours):

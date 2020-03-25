@@ -1,3 +1,10 @@
+/*
+
+|**** EXPLANATION ****|
+
+
+*/
+
 $(document).ready(function() {
 
 	var svg = d3.select('svg'),
@@ -13,7 +20,7 @@ $(document).ready(function() {
 	var simulation
 	var g
 	var queryword
-	var modelname
+	var model_name
 	var arr_addednodes
 	var obj_time_sims
 	var time_centernode
@@ -28,14 +35,17 @@ $(document).ready(function() {
 	.force('y', d3.forceY())
 	.alphaTarget(1)
 	.on('tick', ticked);
+
+	var option_el = $('#model_select')	// Used to get the selected documents
 	
-	function initialiseNetwork(json_object){
+	function initialise_network(json_object){
 		// Initialise the d3 graph
 
 		d3.selectAll("svg > *").remove();
 
 		queryword = json_object['nodes'][0]['name']
-		modelname = $('#modelselect').val()
+		model_source = $('#model_select:selected').attr('data-source')
+		model_name = $('#model_select').val()
 		console.log(queryword)
 
 		nodes = []
@@ -65,7 +75,7 @@ $(document).ready(function() {
 		//store already present nodes in array
 		var names = json_object['nodes']
 		arr_addednodes = []
-		for (x in names){
+		for (x in names) {
 			arr_addednodes.push(names[x]['name'])
 		}
 
@@ -86,12 +96,15 @@ $(document).ready(function() {
 		// add classes to node to style differently for nodes per platform
 		var arr_newnodes = arr_addednodes
 		for (var i = 0; i < arr_newnodes.length; i++) {
-			console.log(modelname)
-			if (modelname.substring(0,2) == 'yt'){
-				$('#node-' + arr_newnodes[i]).addClass('yt-node')
+			// Type of node is dependent on the model_name
+			if (model_source == '4chan'){
+				$('#node-' + arr_newnodes[i]).addClass('4chan-node')
 			}
-			else if (modelname.substring(0,4) == 'chan'){
-				$('#node-' + arr_newnodes[i]).addClass('chan-node')
+			else if (model_source == 'breitbart'){
+				$('#node-' + arr_newnodes[i]).addClass('breitbart-node')
+			}
+			else if (model_source == 'the_donald'){
+				$('#node-' + arr_newnodes[i]).addClass('the_donald-node')
 			}
 		}
 		arr_newnodes = []
@@ -104,7 +117,7 @@ $(document).ready(function() {
 		$('#' + queryword).addClass('clicked')
 	}
 
-	initialiseNetwork(json_initial);
+	initialise_network(json_initial);
 
 	function restart() {
 		// Create a new graph from JSON data
@@ -116,6 +129,7 @@ $(document).ready(function() {
 		.enter()
 		.append('text')
 		.text(function (d) { return d.id; })
+		.attr('text-anchor', 'middle')
 		.attr('id', function(d) { return ('node-' + d.id); })
 		.merge(node)
 
@@ -134,7 +148,7 @@ $(document).ready(function() {
 	}
 
 	function ticked() {
-		//this function updates the x and y positions of the nodes and links
+		// This function updates the x and y positions of the nodes and links
 		node.attr('x', function(d) { return d.x; })
 		.attr('y', function(d) { return d.y; })
 
@@ -145,23 +159,24 @@ $(document).ready(function() {
 	}
 
 	/* Non-D3 functions */
-	function getSims(callback, modelname, word, animate=false) {
+	function get_sims(callback, model_source, model_name, word, animate=false) {
 		// Returns a dictionary with w2v most_similar results
 
 		var url_animate = ''
+		var url = '/w2v/' + model_source + '/' + model_name + '/' + word + url_animate
 		animate_counter = 0
 
 		if (animate) {
 			url_animate = '/true'
 		}
-
+		
 		$.ajax({
 			dataType: 'text',
-			url: '/w2v/' + modelname + '/' + word + url_animate,
-			
+			url: url,
 			success: callback,
 
 			error: function(error) {
+				console.log(url)
 				document.getElementById('alerts').innerHTML = 'Error in backend'
 				console.log('error')
 				console.log(error);
@@ -170,8 +185,8 @@ $(document).ready(function() {
 	}
 
 	// Callback function to get w2v most_similar json
-	function parseSims(callback){
-		getSims(function(data) {
+	function parse_sims(callback){
+		get_sims(function(data) {
 			
 			if (data == 'Word not in vocabulary'){
 				document.getElementById('alerts').innerHTML = ''
@@ -183,17 +198,18 @@ $(document).ready(function() {
 		});
 	}
 
-	function createNetwork(json, word, newgraph=false, appendgraph=false, samenode=false, removeoldnodes=false){
+	function create_network(json, model_source, word, new_graph=false, append_graph=false, same_node=false, remove_old_nodes=false){
 		/*
 		Function to create a new network
 
-		word:			str,	Word to create a new network with, or to append to an existing network.
 		json:			str,	Name of the w2v model to query (listed in front-end dropdown).
-		newgraph:		bool,	Whether to create a totally new graph.
-		appendgraph:	bool,	Whether to append to an existing graph.
-		samenode:		bool,	Whether to make a graph for the same node in a different timespan.
+		model_source	str,	Source of the model (e.g. "the_donald").
+		word:			str,	Word to create a new network with, or to append to an existing network.
+		new_graph:		bool,	Whether to create a totally new graph.
+		append_graph:	bool,	Whether to append to an existing graph.
+		same_node:		bool,	Whether to make a graph for the same node in a different timespan.
 								If so, it retains the already existing nodes
-		removeoldnodes	bool,	Remove the nodes that do not appear in a new model (used in slider)
+		remove_old_nodes:	bool,	Remove the nodes that do not appear in a new model (used in slider)
 		.
 		*/
 
@@ -206,27 +222,27 @@ $(document).ready(function() {
 			obj_sims = JSON.parse(json)
 		}
 
-		if (newgraph == true) {
+		if (new_graph == true) {
 			console.log('Restarting network for ' + word)
-			initialiseNetwork(obj_sims)
+			initialise_network(obj_sims)
 			document.getElementById('alerts').innerHTML = ''
 		}
 
 		else {
 			//set the source of the clicked node, i.e. the index of the node labels array
-			var index_source = getIndex(word)
+			var index_source = get_index(word)
 			var link_weight
 			//z is used to skip the first node - for when a present node is clicked
 			var z = 0
 
 			// If nodes need to be appended
-			if (appendgraph) {
+			if (append_graph) {
 				console.log('Appending network for ' + word)
 				z = 1
 			}
 
 			// If the center node stays the same but network should show nodes over time
-			else if (samenode) {
+			else if (same_node) {
 				console.log('Showing nodes for ' + word + ' from a different model')
 				console.log(arr_addednodes.indexOf(word))
 				console.log(word)
@@ -256,7 +272,7 @@ $(document).ready(function() {
 									console.log('node already added')
 									if (x > 0) {
 										// Don't add a new link if the slider is used and the nodes is already in the new ones
-										if (!samenode && !removeoldnodes) {
+										if (!same_node && !remove_old_nodes) {
 											console.log('Creating link')
 											links.push({source: (index_source), target: (arr_addednodes.indexOf(node_name)), weight: parseInt(obj_sims['links'][(x - 1)]['weight'] * 10)})
 										}
@@ -271,8 +287,8 @@ $(document).ready(function() {
 									
 									// source = clicked node, i.e. index_source
 									// target = last added node to arr_addednode
-									var target_source = getIndex(node_name)
-									if (appendgraph == false) {
+									var target_source = get_index(node_name)
+									if (append_graph == false) {
 										links.push({source: (index_source), target: (target_source), source_id: (node_name), weight: parseInt(obj_sims['links'][(x - 1)]['weight'] * 10)})
 									}
 									else {
@@ -300,7 +316,7 @@ $(document).ready(function() {
 			restart()
 
 			// Remove the old nodes that are not in the new nodes if the time slider is used
-			if (samenode && removeoldnodes) {
+			if (same_node && remove_old_nodes) {
 
 				// console.log('Removing old nodes')
 				
@@ -312,7 +328,7 @@ $(document).ready(function() {
 				// console.log(arr_drop_nodes)
 				// Drop nodes and links
 				for (i in arr_drop_nodes) {
-					removeNode(arr_drop_nodes[i])
+					remove_node(arr_drop_nodes[i])
 				}
 			}
 
@@ -320,11 +336,11 @@ $(document).ready(function() {
 
 			// add classes to node to style differently for nodes per platform
 			for (var i = 0; i < arr_newnodes.length; i++) {
-				console.log(modelname)
-				if (modelname.substring(0,2) == 'yt'){
+				console.log(model_name)
+				if (model_name.substring(0,2) == 'yt'){
 					$('#node-' + arr_newnodes[i]).addClass('yt-node')
 				}
-				else if (modelname.substring(0,4) == 'chan'){
+				else if (model_name.substring(0,4) == 'chan'){
 					$('#node-' + arr_newnodes[i]).addClass('chan-node')
 				}
 			}
@@ -334,7 +350,7 @@ $(document).ready(function() {
 	}
 
 
-	function createTimeNetworks(json, word) {
+	function create_time_networks(json, word) {
 		// Create an object of similarities over time and show the first network
 
 		console.log('Animating the network over time.')
@@ -344,7 +360,7 @@ $(document).ready(function() {
 
 		// Create a slider with a dynamic length based on the amount of w2v models results returned
 		model_count = obj_time_sims.length
-		createSlider(model_count)
+		create_slider(model_count)
 
 		nodes = []
 		links = []
@@ -357,17 +373,17 @@ $(document).ready(function() {
 		document.getElementById('alerts').innerHTML = ''
 
 		// Create the network for the first w2v model
-		initialiseNetwork(obj_time_sims[0])
+		initialise_network(obj_time_sims[0])
 
 		// Show the name of the first model
-		modelnames = document.getElementById('modelselect').options
-		modelname = modelnames[0].value
-		$('#time_model').html(modelname)
+		model_names = document.getElementById('model_select').options
+		model_name = model_names[0].value
+		$('#time_model').html(model_name)
 
 		restart();
 	}
 
-	function removeNode(node_name) {
+	function remove_node(node_name) {
 		// Takes a node name and removes a node and its links from the network
 
 		// console.log('Removing ' + node_name)
@@ -375,7 +391,7 @@ $(document).ready(function() {
 		var all_links = links.slice()
 		var all_nodes = nodes.slice()
 		var count_removed = 0
-		var node_index = getIndex(node_name)
+		var node_index = get_index(node_name)
 
 		// Get the index of the node and remove it
 		for (i in all_nodes) {
@@ -399,7 +415,7 @@ $(document).ready(function() {
 		restart()
 	}
 
-	function getIndex(node_name) {
+	function get_index(node_name) {
 		// Returns the index of a node from its label
 		var all_nodes = nodes.slice()
 		// default to a new node for appending node
@@ -413,14 +429,14 @@ $(document).ready(function() {
 		return node_index
 	}
 
-	function stopAnimation() {
+	function stop_animation() {
 		// Stops any ongoing network animation
 		$('#btn-animate-slider').html('Animate')
 		$('#btn-animate-slider').attr('disabled', 'false')
 		clearInterval(animate_network)
 	}
 
-	function createSlider(length) {
+	function create_slider(length) {
 		// Creates an HTML slider based on the amount of w2v models returned from the server
 		// Remove the old slider if it exists
 		console.log('adding slider')
@@ -428,108 +444,123 @@ $(document).ready(function() {
 		$('#slider-container').html('<input type="range" min="1" max="' + length + '" value="1" id="time-slider"><button id="btn-animate-slider">Animate</button>')
 	}
 
-	// Click handlers
+	////////////////////
+	/* CLICK HANDLERS */
+	////////////////////
+
 	$('svg').on('click', 'text', function() {
-		stopAnimation()
-		var inputword = this.innerHTML
+		stop_animation()
+		var input_word = this.innerHTML
 		$('#alerts').html('')
 
 		if (ctrl_press) {
-			removeNode(inputword)
+			remove_node(input_word)
 		}
 
 		else {
 			$(this).addClass('clicked')
-			modelname = $('#modelselect').val()
-			document.getElementById('alerts').innerHTML = 'Loading...'
+
+			model_name = $('#model_select').val()								// Get model name
+			model_source = $('option:selected', option_el).attr('data-source')	// CHANGE
 			
-			getSims(function(response){
-				createNetwork(response, inputword, newgraph=false, appendgraph=false)
+			document.getElementById('alerts').innerHTML = 'Loading...'
+			console.log(model_source, input_word)
+
+			get_sims(function(response){
+				create_network(response, model_source, model_name, input_word, new_graph=false, append_graph=false)
 			},
-			modelname, inputword)
+			model_source, model_name, input_word)
 		}
 	});
 
 	$('#btn-restart').on('click', function(){
-		// Create a fresh network. Calls 'createNetwork' which calls 'initialiseNetwork'
-		stopAnimation()
+		// Create a fresh network. Calls 'create_network' which calls 'initialise_network'
+		stop_animation()
 		$('#slider-container').empty()
 
-		var inputword = $('#querystring').val()
-		if (inputword == '') {
+		var input_word = $('#querystring').val()
+		if (input_word == '') {
 			alert('Please type a word to restart the new network with.')
 		}
 		else {
-			modelname = $('#modelselect').val()
+			model_name = $('#model_select').val()
 			document.getElementById('alerts').innerHTML = 'Loading...'
 			
-			getSims(function(response){
-				createNetwork(response, inputword, newgraph=true, appendgraph=false)
+			model_source = $('option:selected', option_el).attr('data-source')	// Get model source
+
+			get_sims(function(response){
+				create_network(response, model_source, input_word, new_graph=true, append_graph=false)
 			},
-			modelname, inputword)
+			model_name, input_word)
 		}
 	});
 
 	$('#btn-append').on('click', function(){
-		stopAnimation()
-		var inputword = $('#querystring').val()
-		if (inputword == '') {
+		stop_animation()
+		var input_word = $('#querystring').val()
+		if (input_word == '') {
 			alert('Please type a word to append to the network.')
 		}
-		else if (arr_addednodes.includes(inputword)){
+		else if (arr_addednodes.includes(input_word)){
 			document.getElementById('alerts').innerHTML = 'Node already added'
 		}
 		else{
 			document.getElementById('alerts').innerHTML = 'Loading...'
-			modelname = $('#modelselect').val()
-			
-			getSims(function(response){
-				createNetwork(response, inputword, newgraph=false, appendgraph=true)
+			model_name = $('#model_select').val()
+			model_source = $('option:selected', option_el).attr('data-source')	// Get model source
+
+			get_sims(function(response){
+				create_network(response, model_source, input_word, new_graph=false, append_graph=true)
 			},
-			modelname, inputword)
+			model_name, input_word)
 		}
 	});
 
 	$('#btn-time-range').on('click', function(){
-		stopAnimation()
-		var inputword = $('#querystring').val()
-		if (inputword == '') {
+		stop_animation()
+		var input_word = $('#querystring').val()
+		if (input_word == '') {
 			alert('Please type a word to animate the network with.')
 		}
 		else {
-			$('#modelselect')[0].selectedIndex = 0
-			modelname = $('#modelselect').val()
+			$('#model_select')[0].selectedIndex = 0
+			model_name = $('#model_select').val()
 			document.getElementById('alerts').innerHTML = 'Loading...'
 			
-			getSims(function(response){
-				createTimeNetworks(response, inputword)
+			get_sims(function(response){
+				create_time_networks(response, input_word)
 			},
-			modelname, inputword, animate=true)
+			model_name, input_word, animate=true)
 		}
 	});
 
 	// Update the network if the slider changes
 	$('#slider-container').on('change', '#time-slider', function(){
 		clearInterval(animate_network)
-		$('#modelselect')[0].selectedIndex = (this.value - 1)
-		modelname = $('#modelselect').val()
-		$('#time_model').html(modelname)
-		createNetwork(obj_time_sims[this.value - 1], time_centernode, newgraph=false, appendgraph=false, samenode=true, removeoldnodes=true)
+		$('#model_select')[0].selectedIndex = (this.value - 1)
+		model_source = $('option:selected', option_el).attr('data-source')	// Get model source
+		model_name = $('#model_select').val()
+		$('#time_model').html(model_name)
+		create_network(obj_time_sims[this.value - 1], model_source, time_centernode, new_graph=false, append_graph=false, same_node=true, remove_old_nodes=true)
 	});
 
 	$('#slider-container').on('click', '#btn-animate-slider', function(){
-		$('#modelselect')[0].selectedIndex = 0
+		$('#model_select')[0].selectedIndex = 0
+		model_source = $('option:selected', option_el).attr('data-source')	// Get model source
 		var model_counter = 0
 		$('#time-slider').attr('value', model_counter + 1)
 		$('#btn-animate-slider').html('Animating...')
 		$('#btn-animate-slider').attr('disabled', 'true')
-		createNetwork(obj_time_sims[model_counter], time_centernode, newgraph=false, appendgraph=false, samenode=true, removeoldnodes=true)
+		create_network(obj_time_sims[model_counter], model_source, time_centernode, new_graph=false, append_graph=false, same_node=true, remove_old_nodes=true)
 		model_counter++
+
 		animate_network = setInterval(function() {
-			$('#modelselect')[0].selectedIndex = (model_counter - 1)
-			$('#time-model').html(model)
+			$('#model_select')[0].selectedIndex = (model_counter - 1)
+			model_source = $('option:selected', option_el).attr('data-source')	// Get model source
+			model_name = $('#model_select').val()
+			$('#time-model').html(model_name)
 			$('#time-slider').attr('value', model_counter + 1)
-			createNetwork(obj_time_sims[model_counter], time_centernode, newgraph=false, appendgraph=false, samenode=true, removeoldnodes=true)
+			create_network(obj_time_sims[model_counter], model_source, time_centernode, new_graph=false, append_graph=false, same_node=true, remove_old_nodes=true)
 			model_counter++
 
 			if (model_counter >= model_count) {

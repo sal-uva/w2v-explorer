@@ -36,9 +36,11 @@
 
 	<div id='controlpanel'>
 
-		<select id='modelselect'>
+		<select id='model_select'>
 			{% for model in models %}
-			<option> {{model}}</option>
+				{% for key in model %}
+					<option data-source="{{ key }}"> {{ model[key] }}</option>
+				{% endfor %}
 			{% endfor %}
 		</select>
 
